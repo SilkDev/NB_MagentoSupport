@@ -1,14 +1,15 @@
 package fr.adexos.modules.magentosupport;
 
 import fr.adexos.modules.magentosupport.Magento.MagentoModel;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
+import jdk.nashorn.internal.objects.NativeString;
 import org.netbeans.api.editor.mimelookup.MimeRegistration;
 import org.netbeans.spi.editor.completion.CompletionProvider;
 import org.netbeans.spi.editor.completion.CompletionResultSet;
@@ -30,7 +31,7 @@ public class MagentoCompletionProvider implements CompletionProvider {
      */
     public MagentoCompletionProvider() {
         // Models
-        HashMap MageModels = new HashMap<String, MagentoModel>();
+        HashMap<String, MagentoModel> MageModels = new HashMap<String, MagentoModel>();
         MageModels.put("catalog/product", new MagentoModel("catalog/product"));
         
         // Helpers
@@ -58,7 +59,7 @@ public class MagentoCompletionProvider implements CompletionProvider {
                     filter = new String(line, whiteOffset + 1, line.length - whiteOffset - 1);
                     // Filter out all non Magento stuff
                     if (!filter.startsWith("Mage::")) {
-                        System.out.println("MageSupport : Text is not related");
+                        System.out.println("MageSupport : Text is not related - " + filter);
                         completionResultSet.finish();
                         return;
                     }
@@ -72,11 +73,24 @@ public class MagentoCompletionProvider implements CompletionProvider {
                     Exceptions.printStackTrace(ex);
                 }
 
-                if (filter.matches("/Mage::getModel/")) {
+                if (filter.startsWith("Mage::getModel") || filter.startsWith("Mage::getSingleton")) {
+                    Pattern p = Pattern.compile("Mage::getModel\\('(.*)'\\)");
+                    String s =  filter;  
+                    Matcher m = p.matcher(s) ;  
+
+                    if( m.matches()) {
+                        System.out.println("groupes " + m.groupCount());
+                        for (int i = 0; i <= m.groupCount(); ++i) {
+                            System.out.println("groupe " + i + " :" + m.group(i));
+                        }
+                    }
+                    if (m.group(1) != null) {
+                        
+                    }
                     // Find DocBlock
-                    
+                    System.out.println("MageSupport : Fetching for ");
                     completionResultSet.addItem(new MageCompletionItem("", startOffset, caretOffset));
-                } else if (filter.matches("/Mage::helper/")) {
+                } else if (filter.startsWith("Mage::helper")) {
                     
                 } else {
                     System.out.println("MageSupport : Nothing to do");
