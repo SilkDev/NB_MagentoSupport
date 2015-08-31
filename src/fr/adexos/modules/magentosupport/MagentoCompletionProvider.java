@@ -4,13 +4,22 @@ import fr.adexos.modules.magentosupport.Magento.MagentoModel;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.UndoableEditListener;
+import javax.swing.text.AbstractDocument.Content;
+import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.Document;
 import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
+import javax.swing.text.PlainDocument;
+import javax.swing.text.Position;
+import javax.swing.text.Segment;
 import javax.swing.text.StyledDocument;
 import jdk.nashorn.internal.objects.NativeString;
 import org.netbeans.api.editor.mimelookup.MimeRegistration;
+import org.netbeans.modules.php.editor.completion.PhpTypeCompletionProviderWrapper;
 import org.netbeans.spi.editor.completion.CompletionProvider;
 import org.netbeans.spi.editor.completion.CompletionResultSet;
 import org.netbeans.spi.editor.completion.CompletionTask;
@@ -26,15 +35,7 @@ import org.openide.util.Exceptions;
 public class MagentoCompletionProvider implements CompletionProvider {
 
     
-    /**
-     * On startup, build the main collection of Magento classes
-     */
     public MagentoCompletionProvider() {
-        // Models
-        HashMap<String, MagentoModel> MageModels = new HashMap<String, MagentoModel>();
-        MageModels.put("catalog/product", new MagentoModel("catalog/product"));
-        
-        // Helpers
         
     }
 
@@ -50,7 +51,7 @@ public class MagentoCompletionProvider implements CompletionProvider {
             protected void query(CompletionResultSet completionResultSet, Document document, int caretOffset) {
                 String filter = null;
                 int startOffset = caretOffset - 1;
-
+                
                 try {
                     final StyledDocument bDoc = (StyledDocument) document;
                     final int lineStartOffset = getRowFirstNonWhite(bDoc, caretOffset);
@@ -73,25 +74,33 @@ public class MagentoCompletionProvider implements CompletionProvider {
                     Exceptions.printStackTrace(ex);
                 }
 
-                if (filter.startsWith("Mage::getModel") || filter.startsWith("Mage::getSingleton")) {
-                    Pattern p = Pattern.compile("Mage::getModel\\('(.*)'\\)");
-                    String s =  filter;  
-                    Matcher m = p.matcher(s) ;  
-
-                    if( m.matches()) {
-                        System.out.println("groupes " + m.groupCount());
-                        for (int i = 0; i <= m.groupCount(); ++i) {
-                            System.out.println("groupe " + i + " :" + m.group(i));
-                        }
-                    }
-                    if (m.group(1) != null) {
+                if (filter.startsWith("Mage::")) {
+                    try {
+                        Pattern p = Pattern.compile("Mage::(.*)\\('(.*)'\\)(.*)");
+                        String s =  filter;
+                        Matcher m = p.matcher(s) ;
+                        String completionClass, completionType;
                         
+                        if( m.find() && m.groupCount() > 0) {
+                            System.out.println("groupes " + m.groupCount());
+                            for (int i = 0; i <= m.groupCount(); ++i) {
+                                System.out.println("groupe " + i + " :" + m.group(i));
+                            }
+                            completionType = m.group(1);
+                            completionClass = m.group(2);
+                            
+                            // Mimic completion for original class
+                            JTextComponent PHPJTC = new JTextComponent();
+                            PHPJTC.setText("Mage_Core_Helper_Data");
+                            CompletionProvider PHPProvider = new PhpTypeCompletionProviderWrapper();
+                            System.out.println("MageSupport : Fetching for " + completionClass + " of type " + completionType);
+                            completionResultSet.addItem(new MageCompletionItem("", startOffset, caretOffset));
+                        } else {
+                            System.out.println("No match found");
+                        }
+                    } catch (Exception ex) {
+                        Exceptions.printStackTrace(ex);
                     }
-                    // Find DocBlock
-                    System.out.println("MageSupport : Fetching for ");
-                    completionResultSet.addItem(new MageCompletionItem("", startOffset, caretOffset));
-                } else if (filter.startsWith("Mage::helper")) {
-                    
                 } else {
                     System.out.println("MageSupport : Nothing to do");
                 }
